@@ -12,12 +12,12 @@ WORKDIR /workspace
 COPY pom.xml ./
 
 # Copy module poms explicitly to preserve layout and avoid overwriting similarly-named files.
-# Adjust this list to match the actual modules in your repo.
+# Include all child modules referenced in the parent pom (add more as needed).
 COPY generic-server/pom.xml generic-server/pom.xml
 COPY peppol-smp/pom.xml peppol-smp/pom.xml
 COPY oasis-smp2/pom.xml oasis-smp2/pom.xml
 COPY mgmt-api/pom.xml mgmt-api/pom.xml
-# Add any additional module pom.xml COPY lines here...
+COPY distr/pom.xml distr/pom.xml
 
 # Optionally provide a custom settings.xml (for private repos/mirrors)
 # Pass --build-arg MAVEN_SETTINGS=./path/to/settings.xml to include it
@@ -67,4 +67,4 @@ ENV JAVA_OPTS="-Xms256m -Xmx512m" \
 USER app
 EXPOSE 8080
 
-ENTRYPOINT ["sh","-c","exec java $JAVA_OPTS -jar /app/app.jar"] 
+ENTRYPOINT ["sh","-c","exec java $JAVA_OPTS -jar /app/app.jar"]
