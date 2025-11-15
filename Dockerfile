@@ -3,28 +3,26 @@
 #
 # Usage:
 #  docker build -t holodeck-smp:latest .
-#  docker build --build-arg APP_MODULE=smp-server-app -t holodeck-smp:latest .
 
 FROM maven:3.9.5-eclipse-temurin-17 AS build
 ARG APP_MODULE=smp-server-app
 WORKDIR /workspace
 
-# Copy entire project structure early to avoid breaking reactor resolution
+# Copy entire project structure
 COPY . .
 
-# Pre-download dependencies to leverage Docker layer cache
-# Run offline mode to pre-fetch all dependencies for faster builds
-RUN mvn -B -e dependency:go-offline -DskipTests
-
-# Build the application module with all dependencies pre-cached
-# This builds the module and its upstream dependencies
-RUN mvn -B -e -DskipTests -pl :${APP_MODULE} -am package
+# Build the application module and all upstream dependencies
+# Note: dependency:go-offline is skipped because internal dependencies
+# (e.g., generic-utils:1.1.0) are only available via custom/private repositories.
+# Maven will resolve dependencies during the build phase.
+RUN mvn -B -e -DskipTests -pl :${APP_MODULE} -am clean package
 
 # Locate and copy the runnable JAR (exclude source/javadoc jars)
 RUN set -eux; \
-    jar="$(find . -type f -path '*/target/*.jar' ! -name '*-sources.jar' ! -name '*-javadoc.jar' ! -name '*-original.jar' | head -n1)"; \
+    jar="$(find . -type f -path '*/target/*.jar' ! -name '*-sources.jar' ! -name '*-javadoc.jar' ! -name '*-original.jar' -print | head -n1)"; \
     if [ -z "$jar" ]; then \
         echo 'ERROR: no built jar found under */target' >&2; \
+        find . -type f -path '*/target/*.jar' -print; \
         exit 1; \
     fi; \
     mkdir -p /workspace/dist; \
@@ -49,5 +47,8 @@ ENV JAVA_OPTS="-Xms256m -Xmx512m" \
 
 USER app
 EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD java -jar /app/app.jar --help 2>/dev/null || exit 1
 
 ENTRYPOINT ["sh","-c","exec java $JAVA_OPTS -jar /app/app.jar"]
