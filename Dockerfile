@@ -42,7 +42,7 @@ RUN set -eux; \
     echo "Selected jar: $jar";
 
 # Runtime stage
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
 
 # Create unprivileged user
@@ -60,4 +60,4 @@ ENV JAVA_OPTS="-Xms256m -Xmx512m" \
 USER app
 EXPOSE 8080
 
-ENTRYPOINT ["sh","-c","exec java $JAVA_OPTS -jar /app/app.jar"]     
+ENTRYPOINT ["sh","-c","exec java $JAVA_OPTS -jar /app/app.jar"] 
