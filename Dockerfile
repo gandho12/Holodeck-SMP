@@ -42,7 +42,7 @@ RUN set -eux; \
     echo "Selected jar: $jar";
 
 # Runtime stage
-FROM eclipse-temurin:17-jre-jammy
+FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
 # Create unprivileged user
