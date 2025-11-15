@@ -1,20 +1,29 @@
 # Multi-stage Dockerfile for Holodeck-SMP (deterministic jar selection, safer caching, non-root runtime)
 #
 # Usage:
-#  docker build --build-arg APP_MODULE=smp-server-app -t holodeck-smp:latest .
-# If your main module has a different artifactId/module folder, set APP_MODULE accordingly.
+#  docker build --build-arg APP_MODULE=smp-server-app --build-arg MAVEN_SETTINGS=./settings.xml -t holodeck-smp:latest .
 
-# Build stage
 FROM maven:3.9.5-eclipse-temurin-17 AS build
 ARG APP_MODULE=smp-server-app
+ARG MAVEN_SETTINGS=
 WORKDIR /workspace
 
 # Copy root pom first to enable dependency layer caching
 COPY pom.xml ./
 
-# Copy module pom files (will match existing modules in the repo) to help mvn go-offline.
-# Note: this copies all module pom.xml files matched by the glob; keep it to accelerate dependency resolution.
-COPY */pom.xml ./
+# Copy module poms explicitly to preserve layout and avoid overwriting similarly-named files.
+# Adjust this list to match the actual modules in your repo.
+COPY generic-server/pom.xml generic-server/pom.xml
+COPY peppol-smp/pom.xml peppol-smp/pom.xml
+COPY oasis-smp2/pom.xml oasis-smp2/pom.xml
+COPY mgmt-api/pom.xml mgmt-api/pom.xml
+# Add any additional module pom.xml COPY lines here...
+
+# Optionally provide a custom settings.xml (for private repos/mirrors)
+# Pass --build-arg MAVEN_SETTINGS=./path/to/settings.xml to include it
+RUN if [ -n "$MAVEN_SETTINGS" ]; then \
+      mkdir -p /root/.m2 && cp $MAVEN_SETTINGS /root/.m2/settings.xml ; \
+    fi
 
 # Pre-download dependencies to leverage Docker layer cache
 RUN mvn -B -e dependency:go-offline
@@ -41,7 +50,6 @@ RUN set -eux; \
     cp "$jar" /workspace/dist/app.jar; \
     echo "Selected jar: $jar";
 
-# Runtime stage
 FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
 
@@ -53,7 +61,6 @@ RUN groupadd -r app && useradd -r -g app -d /app -s /sbin/nologin app \
 COPY --from=build /workspace/dist/app.jar /app/app.jar
 RUN chown app:app /app/app.jar
 
-# Allow runtime customization of JVM options and server port
 ENV JAVA_OPTS="-Xms256m -Xmx512m" \
     SERVER_PORT=8080
 
