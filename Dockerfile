@@ -13,7 +13,7 @@ COPY src ./src
 RUN mvn -B -DskipTests package
 
 # Runtime stage
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:25.0.1_8-jre-noble
 WORKDIR /app
 
 # Copy the jar built by Maven (adjust the pattern if your artifact name differs)
